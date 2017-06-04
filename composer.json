@@ -1,0 +1,25 @@
+{
+    "name": "wedeto/html",
+    "license": "MIT",
+    "description": "Wedeto Platform - HTML Templating System",
+    "homepage": "https://wedeto.net/",
+    "type": "library",
+    "require": {
+        "Wedeto/Util": "0.9.*",
+        "php": ">=7.0.0"
+    },
+    "require-dev": {
+        "mikey179/vfsStream": "~1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Wedeto\\Application\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Egbert van der Wal",
+            "email": "wedeto@pointpro.nl"
+        }
+    ]
+}
