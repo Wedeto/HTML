@@ -26,35 +26,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Wedeto\HTML;
 
 use PHPUnit\Framework\TestCase;
-use Wedeto\HTTP\Response\Error as HTTPError;
+use org\bovigo\vfs\vfsStream;
+use org\bovigo\vfs\vfsStreamWrapper;
+use org\bovigo\vfs\vfsStreamDirectory;
+
+use Wedeto\Util\Dictionary;
+use Wedeto\IO\IOException;
 use Wedeto\HTTP\Request;
-use Wedeto\HTTP\StringResponse;
+use Wedeto\HTTP\Response\Error as HTTPError;
+use Wedeto\HTTP\Response\StringResponse;
+use Wedeto\Resolve\Resolver;
 
 /**
  * @covers Wedeto\HTML\Template
  */
 final class TemplateTest extends TestCase
 {
-    private $request;
     private $resolver;
     private $testpath;
     private $filename;
 
     public function setUp()
     {
-        $this->request = new MockTemplateRequest;
-        $this->resolver = System::resolver();
+        $this->resolver = new MockTemplateResolver;
 
-        $this->testpath = System::path()->var . '/test';
-        IO\Dir::mkdir($this->testpath);
-        $this->filename = tempnam($this->testpath, "wedetotest") . ".php";
+        vfsStreamWrapper::register();
+        vfsStreamWrapper::setRoot(new vfsStreamDirectory('tpldir'));
+        $this->testpath = vfsStream::url('tpldir');
+        $this->filename = $this->testpath . '/' . sha1(random_int(0, 1000)) . ".php";
     }
-
-    public function tearDown()
-    {
-        IO\Dir::rmtree($this->testpath);
-    }
-
 
     /**
      * @covers Wedeto\HTML\Template::__construct
@@ -64,8 +64,8 @@ final class TemplateTest extends TestCase
      */
     public function testConstruct()
     {
-        $tpl = new Template($this->request);
-        $tpl->setTemplate('error/HttpError');
+        $tpl = new Template($this->resolver);
+        $tpl->setTemplate('error/HTTPError');
         $tpl->setTitle('IO Error');
         $tpl->assign('exception', new IOException('Fail'));
 
@@ -74,22 +74,27 @@ final class TemplateTest extends TestCase
 
     public function testTitle()
     {
-        $this->request->vhost = null;
-        $this->request->route = '/';
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
 
-        $this->assertEquals('Default - /', $tpl->title());
+        $this->assertEquals('Unnamed Page', $tpl->title());
     }
 
     public function testExisting()
     {
-        $file = $this->resolver->template('error/HttpError');
-        $tpl = new Template($this->request);
+        $filename = basename($this->filename);
+        file_put_contents($this->filename, "<?php\necho 'foo bar';\n");
+
+        $this->resolver = new Resolver("template");
+        $this->resolver->addToSearchPath("template", $this->testpath, 0);
+
+        $file = $this->resolver->resolve($filename);
+
+        $tpl = new Template($this->resolver);
         $tpl->setTemplate($file);
 
         $this->assertEquals($file, $tpl->getTemplate());
 
-        $this->expectException(HttpError::class);
+        $this->expectException(HTTPError::class);
         $this->expectExceptionMessage("Template file could not be found");
         $this->expectExceptionCode(500);
 
@@ -98,23 +103,14 @@ final class TemplateTest extends TestCase
 
     public function testNoTitle()
     {
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
 
-        $this->assertEquals('foobar - /', $tpl->title());
-    }
-
-    public function testNoTitleNoSiteName()
-    {
-        $tpl = new Template($this->request);
-
-        $s = $this->request->vhost->getSite();
-        $s->setName('default');
-        $this->assertEquals('/', $tpl->title());
+        $this->assertEquals('Unnamed Page', $tpl->title());
     }
 
     public function testAssets()
     {
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
         $tpl->addJS('test');
         $tpl->addCSS('test');
 
@@ -127,15 +123,14 @@ final class TemplateTest extends TestCase
 
     public function testSetExceptionTemplate()
     {
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
 
-        $resolve = System::resolver(); 
-        $file = $resolve->template('error/HttpError');
-
-        $tpl->setExceptionTemplate(new HttpError(500, 'Foobarred'));
+        $file = $this->resolver->resolve('error/HTTPError500');
+        $tpl->setExceptionTemplate(new HTTPError(500, 'Foobarred'));
         $this->assertEquals($file, $tpl->getTemplate());
 
-        $tpl->setExceptionTemplate(new MockTemplateHttpError(500, 'Foobarred'));
+        $file = $this->resolver->resolve('error/Wedeto/HTML/MockTemplateHTTPError500');
+        $tpl->setExceptionTemplate(new MockTemplateHTTPError(500, 'Foobarred'));
         $this->assertEquals($file, $tpl->getTemplate());
     }
 
@@ -150,7 +145,7 @@ final class TemplateTest extends TestCase
 EOT;
         file_put_contents($this->filename, $tpl_file);
 
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
         $tpl->setTemplate($this->filename);
 
         $tpl->assign('foo', 'bar');
@@ -181,12 +176,12 @@ throw new RuntimeException("Foo");
 EOT;
         file_put_contents($this->filename, $tpl_file);
 
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
         $tpl->setTemplate($this->filename);
 
         $tpl->assign('foo', 'bar');
 
-        $this->expectException(HttpError::class);
+        $this->expectException(HTTPError::class);
         $this->expectExceptionCode(500);
         $this->expectExceptionMessage("Template threw exception");
         $tpl->render();
@@ -200,16 +195,13 @@ EOT;
     {
         $tpl_file = <<<EOT
 <?php
-if (\$this->request->wantJSON())
-{
-    \$data = ['foo', 'bar'];
-    throw new Wedeto\Http\DataResponse(\$data);
-}
+\$data = ['foo', 'bar'];
+throw new Wedeto\HTTP\Response\DataResponse(\$data);
 ?>
 EOT;
         file_put_contents($this->filename, $tpl_file);
 
-        $tpl = new Template($this->request);
+        $tpl = new Template($this->resolver);
         $tpl->setTemplate($this->filename);
 
         $tpl->assign('foo', 'bar');
@@ -220,31 +212,10 @@ EOT;
         }
         catch (\Wedeto\HTTP\Response\DataResponse $e)
         {
-            $actual = $e->getDictionary()->getAll();
+            $actual = $e->getData()->getAll();
             $expected = ['foo', 'bar'];
             $this->assertEquals($expected, $actual);
         }
-    }
-
-    /**
-     * @covers Wedeto\HTML\Template::render
-     * @covers Wedeto\HTML\Template::renderReturn
-     */
-    public function testRenderThrowsTerminateRequest()
-    {
-        $tpl_file = <<<EOT
-<?php
-throw new Wedeto\HTML\TerminateRequest("Foobar!");
-?>
-EOT;
-        file_put_contents($this->filename, $tpl_file);
-
-        $tpl = new Template($this->request);
-        $tpl->setTemplate($this->filename);
-
-        $this->expectException(TerminateRequest::class);
-        $this->expectExceptionMessage("Foobar!");
-        $tpl->render();
     }
 
     /**
@@ -263,22 +234,16 @@ EOT;
      */
     public function testResolveTpl()
     {
-        $cur = System::template();
-
-        $this->request->setResolver(new MockTemplateResolver());
-        $tpl = new Template($this->request);
-        System::getInstance()->template = $tpl;
+        $tpl = new Template($this->resolver);
 
         $actual = \tpl('baz');
         $expected = '/foobar/baz';
         $this->assertEquals($expected, $actual);
-
-        System::getInstance()->template = $cur;
     }
 
     public function testSetMime()
     {
-        $tpl = System::template();
+        $tpl = new Template($this->resolver);
         $tpl->setMimeType('text/html');
         $this->assertEquals('text/html', $tpl->getMimeType());
 
@@ -288,7 +253,7 @@ EOT;
 
     public function testAddStyle()
     {
-        $tpl = System::template();
+        $tpl = new Template($this->resolver);
         $mgr = $tpl->getAssetManager();
 
         $my_style = '.random-foo-class {random-style: property;}';
@@ -306,7 +271,7 @@ EOT;
 
     public function testAddJSVariable()
     {
-        $tpl = System::template();
+        $tpl = new Template($this->resolver);
         $mgr = $tpl->getAssetManager();
 
         $my_style = '.random-foo-class {random-style: property;}';
@@ -321,37 +286,6 @@ EOT;
         $this->assertTrue(isset($variables['foo']));
         $this->assertEquals('baz', $variables['foo']);
     }
-
-    public function testGetRequest()
-    {
-        $dict = new Dictionary();
-        $serv = array('REQUEST_URI' => '/');
-        $arr = array();
-        $req = new Request($arr, $arr, $arr, $serv, $dict, System::path(), System::resolver());
-        
-        $tpl = System::template();
-
-        $reqsys = $tpl->getRequest();
-        $this->assertInstanceOf(Http\Request::class, $reqsys);
-        $this->assertNotEquals($req, $reqsys);
-
-        $tpl = new Template($req);
-
-        $req2 = $tpl->getRequest();
-        $this->assertEquals($req, $req2);
-    }
-
-    public function testGetAssetManager()
-    {
-        $dict = new Dictionary();
-        $serv = array('REQUEST_URI' => '/');
-        $arr = array();
-        $req = new Request($arr, $arr, $arr, $serv, $dict, System::path(), System::resolver());
-        $tpl = new Template($req);
-
-        $this->assertInstanceOf(AssetManager::class, $tpl->getAssetManager());
-        $this->assertEquals($req->getResponseBuilder()->getAssetManager(), $tpl->getAssetManager());
-    }
 }
 
 class MockTemplateResolver extends \Wedeto\Resolve\Resolver
@@ -359,41 +293,11 @@ class MockTemplateResolver extends \Wedeto\Resolve\Resolver
     public function __construct()
     {}
 
-    public function template(string $tpl)
+    public function resolve(string $tpl)
     {
         return '/foobar/' . $tpl;
     }
 }
 
-class MockTemplateRequest extends Request
-{
-    public function __construct()
-    {
-        $this->resolver = System::resolver(); 
-        $this->route = '/';
-        $this->vhost = new MockTemplateVhost();
-        $this->response_builder = new Http\ResponseBuilder($this);
-        $this->config = new Dictionary();
-    }
-}
-
-class MockTemplateVhost extends VirtualHost
-{
-    public function __construct()
-    {}
-
-    public function getSite()
-    {
-        if ($this->site === null)
-        {
-            $this->site = new Site;
-            $this->site->setName('foobar');
-        }
-        return $this->site;
-    }
-
-}
-
-class MockTemplateHttpError extends HttpError
-{
-}
+class MockTemplateHTTPError extends HTTPError
+{}

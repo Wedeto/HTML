@@ -132,9 +132,6 @@ final class SafeHTMLTest extends TestCase
         $clean = $safe->getHTML();
         $this->assertEquals($test->counter, 2);
         $this->assertEquals($clean, '<a>Click me</a> <a>Click me</a> Click me');
-
-        $this->expectException(\RuntimeException::class);
-        $safe->addCallback('a', array('non', 'existing', 'function'));
     }
 
     public function testInvalidHTML()

@@ -27,6 +27,8 @@ namespace Wedeto\HTML;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
 use Wedeto\Util\Dictionary;
+use Wedeto\Util\Type;
+use Wedeto\Util\ErrorInterceptor;
 
 /**
  * Provide an interface for searching / replacing specifically formed code
@@ -50,7 +52,7 @@ class BBCode
      */
     public function __construct($config = null)
     {
-        if ($config instanceof Dictionary && $config->has('bbcode', Dictionary::TYPE_ARRAY))
+        if ($config instanceof Dictionary && $config->has('bbcode', Type::ARRAY))
             $config = $config->get('bbcode');
 
         self::getLogger();
@@ -59,7 +61,7 @@ class BBCode
             if (isset($config['patterns']) && isset($config['replacements']))
             {
                 $patterns = $config['patterns'];
-                $replacements = $config['replacements']);
+                $replacements = $config['replacements'];
             }
             else
             {
@@ -114,15 +116,24 @@ class BBCode
 
         $cb = is_callable($replacement);
 
-        try
+        if ($cb)
         {
-            if ($cb)
-                $ret = preg_replace_callback($pattern, $replacement, "");
-            else
-                $ret = preg_replace($pattern, $replacement, "");
+            $interceptor = new ErrorInterceptor('preg_replace_callback');
+            $interceptor->registerError(E_WARNING, 'preg_replace');
+            $interceptor->execute($pattern, $replacement, '');
+            $errors = $interceptor->getInterceptedErrors();
         }
-        catch (\ErrorException $e)
+        else
         {
+            $interceptor = new ErrorInterceptor('preg_replace');
+            $interceptor->registerError(E_WARNING, 'preg_replace');
+            $interceptor->execute($pattern, $replacement, "");
+            $errors = $interceptor->getInterceptedErrors();
+        }
+
+        if (!empty($errors))
+        {
+            $e = reset($errors);
             self::$logger->error("Invalid pattern / replacement: {0} / {1}", [$pattern, $replacement]);
             throw new \RuntimeException("Invalid pattern or replacement: {$pattern} / {$replacement}", 0, $e);
         }

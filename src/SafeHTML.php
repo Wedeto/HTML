@@ -29,6 +29,8 @@ use DOMDocument;
 use DOMNode;
 use DOMException;
 
+use Wedeto\Util\ErrorInterceptor;
+
 /**
  * SafeHTML prepares a piece of HTML code for inclusion in a web app.  It
  * parses the provided HTML, corrects errors and only allows whitelisted tags.
@@ -242,13 +244,10 @@ class SafeHTML
     {
         $dom = new DOMDocument();
 
-        try
-        {
-            $dom->loadHTML($this->html);
-        }
-        catch (\ErrorException $e)
-        {}
-        
+        $interceptor = new ErrorInterceptor(array($dom, 'loadHTML'));
+        $interceptor->registerError(E_WARNING, "DOMDocument::loadHTML");
+
+        $interceptor->execute($this->html);
         $body = $dom->getElementsByTagName('body')->item(0);
 
         $this->sanitizeNode($body);

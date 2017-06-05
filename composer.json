@@ -6,14 +6,18 @@
     "type": "library",
     "require": {
         "Wedeto/Util": "0.9.*",
+        "Wedeto/IO": "0.9.*",
+        "Wedeto/Resolve": "0.9.*",
+        "Wedeto/HTTP": "0.9.*",
         "php": ">=7.0.0"
     },
     "require-dev": {
-        "mikey179/vfsStream": "~1"
+        "mikey179/vfsStream": "~1",
+        "Wedeto/Log": "0.9.*"
     },
     "autoload": {
         "psr-4": {
-            "Wedeto\\Application\\": "src/"
+            "Wedeto\\HTML\\": "src/"
         }
     },
     "authors": [

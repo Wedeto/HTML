@@ -27,6 +27,8 @@ namespace Wedeto\HTML;
 
 use PHPUnit\Framework\TestCase;
 
+use Wedeto\Util\Dictionary;
+
 /**
  * @covers Wedeto\HTML\BBCode
  */

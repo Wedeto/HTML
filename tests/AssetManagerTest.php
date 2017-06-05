@@ -27,8 +27,11 @@ namespace Wedeto\HTML;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
-use Wedeto\HTTP;
-use Wedeto\Resolve;
+use Wedeto\Util\Dictionary;
+use Wedeto\Resolve\Resolver;
+
+use Wedeto\HTTP\Request;
+use Wedeto\HTTP\Responder;
 use Wedeto\HTTP\Response\StringResponse;
 
 /**
@@ -40,15 +43,16 @@ final class AssetManagerTest extends TestCase
 
     public function setUp()
     {
-        $this->devlogger = new Debug\DevLogger(LogLevel::DEBUG);
-        $logger = Debug\Logger::getLogger(AssetManager::class);
-        $logger->addLogHandler($this->devlogger);
+        $this->devlogger = new \Wedeto\Log\Writer\MemLogWriter(LogLevel::DEBUG);
+        $logger = \Wedeto\Log\Logger::getLogger(AssetManager::class);
+        $logger->addLogWriter($this->devlogger);
+        $this->resolver = new MockAssetResolver;
     }
 
     public function tearDown()
     {
-        $logger = Debug\Logger::getLogger(AssetManager::class);
-        $logger->removeLogHandlers();
+        $logger = \Wedeto\Log\Logger::getLogger(AssetManager::class);
+        $logger->removeLogWriters();
     }
 
     /**
@@ -60,7 +64,7 @@ final class AssetManagerTest extends TestCase
      */
     public function testAssets()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager($this->resolver);
 
         $mgr->addScript('test1.min.js');
         $mgr->addScript('test1.js');
@@ -158,7 +162,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJSArrayValue()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $val = array('my' => 'json', 'var' => 3);
         $mgr->addVariable('test', $val);
@@ -168,7 +172,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJSScalarValue()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $expected = 3.5;
         $mgr->addVariable('test', 3.5);
@@ -178,7 +182,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJSDictionary()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $dict = new Dictionary(array('a' => 3));
         $mgr->addVariable('test', $dict);
@@ -189,7 +193,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsArrayLike()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $dict = new Dictionary(array('a' => 3));
         $mgr->addVariable('test', $dict);
@@ -200,7 +204,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsJsonSerializable()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $obj = new MockAssetMgrJsonSerializable();
 
@@ -212,7 +216,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsInvalid()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $obj = new \StdClass();
         $this->expectException(\InvalidArgumentException::class);
@@ -222,7 +226,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineCSS()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
 
         $val = 'body { bg-color: black;}';
         $val2 = 'body { bg-color: black;}';
@@ -235,7 +239,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInvalidJS()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new Resolver('assets'));
         $mgr->addScript('test4');
 
         $scripts = $mgr->getScripts();
@@ -256,7 +260,7 @@ final class AssetManagerTest extends TestCase
 
     public function testExecuteHook()
     {
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
         $mgr->addScript('test1');
         $mgr->addScript('test2');
         $mgr->addCSS('test3');
@@ -264,11 +268,14 @@ final class AssetManagerTest extends TestCase
         $mgr->setTidy(false);
         $this->assertFalse($mgr->getTidy());
 
-        $resp = new StringResponse("<html><head>" . $mgr->injectCSS() . "</head><body>" . $mgr->injectScript() . "</body></html>", 'text/html');
+        $req = Request::createFromGlobals();
+        $responder = new Responder($req);
+        $response = new StringResponse("<html><head>" . $mgr->injectCSS() . "</head><body>" . $mgr->injectScript() . "</body></html>", 'text/html');
+        $responder->setResponse($response);
 
-        $mgr->executeHook($mgr->getRequest(), $resp, 'text/html');
-
-        $op = $resp->getOutput('text/html');
+        $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
+        $mgr->executeHook($params);
+        $op = $response->getOutput('text/html');
 
         $urls = $mgr->resolveAssets($mgr->getScripts(), 'js');
         $url_list = array();
@@ -293,13 +300,17 @@ final class AssetManagerTest extends TestCase
         if (!class_exists('Tidy', false))
             return;
 
-        $mgr = new AssetManager(new MockAssetRequest);
+        $mgr = new AssetManager(new MockAssetResolver);
         $mgr->setTidy(true);
         $this->assertTrue($mgr->getTidy());
 
-        $resp = new StringResponse("<html></head><body><h1>Foo</html>", 'text/html');
+        $req = Request::createFromGlobals();
+        $responder = new Responder($req);
+        $response = new StringResponse("<html></head><body><h1>Foo</html>", 'text/html');
+        $responder->setResponse($response);
 
-        $mgr->executeHook($mgr->getRequest(), $resp, 'text/html');
+        $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
+        $mgr->executeHook($params);
 
         $expected = <<<EOT
 <!DOCTYPE html>
@@ -315,28 +326,18 @@ final class AssetManagerTest extends TestCase
 </html>
 EOT;
 
-        $op = $resp->getOutput('text/html');
+        $op = $response->getOutput('text/html');
 
         $this->assertEquals($expected, $op);
     }
 }
 
-class MockAssetRequest extends HTTP\Request
-{
-    public function __construct()
-    {
-        $this->resolver = new MockAssetResolver();
-        $this->vhost = new MockAssetVhost();
-        $this->responder = new HTTP\Responder($this);
-    }
-}
-
-class MockAssetResolver extends Resolve\Resolver
+class MockAssetResolver extends Resolver
 {
     public function __construct()
     {}
 
-    public function asset(string $path)
+    public function resolve(string $path)
     {
         $min = strpos($path, '.min.') !== false;
         // test1 is only available minified
@@ -358,18 +359,6 @@ class MockAssetResolver extends Resolve\Resolver
     {
         $res = System::resolver();
         return $res->template($path);
-    }
-}
-
-class MockAssetVhost extends VirtualHost
-{
-    public function __construct()
-    {
-    }
-
-    public function URL($path = '', $current_url = null)
-    {
-        return $path;
     }
 }
 
