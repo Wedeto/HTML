@@ -27,12 +27,17 @@ namespace Wedeto\HTML;
 
 use JSONSerializable;
 use InvalidArgumentException;
+use DOMDocument;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
 use Wedeto\Util\Dictionary;
+use Wedeto\Util\Type;
+use Wedeto\Util\TypedDictionary;
+use Wedeto\Util\Hook;
 use Wedeto\Util\Functions as WF;
 
 use Wedeto\HTTP\Response\Response;
+use Wedeto\HTTP\Response\Error;
 use Wedeto\HTTP\Response\StringResponse;
 
 use Wedeto\Resolve\Resolver;
@@ -46,7 +51,7 @@ class AssetManager
     use LoggerAwareStaticTrait;
 
     protected $scripts = array();
-    protected $css = array();
+    protected $CSS = array();
     protected $minified = true;
     protected $tidy = false;
     protected $resolver;
@@ -168,7 +173,7 @@ class AssetManager
     public function addCSS(string $stylesheet, $media = "screen")
     {
         $stylesheet = $this->stripSuffix($stylesheet, ".min", ".css");
-        $this->css[$stylesheet] = array("path" => $stylesheet, "media" => $media);
+        $this->CSS[$stylesheet] = array("path" => $stylesheet, "media" => $media);
         return $this;
     }
 
@@ -178,7 +183,7 @@ class AssetManager
      */
     public function getCSS()
     {
-        return array_values($this->css);
+        return array_values($this->CSS);
     }
     
     /**
@@ -331,21 +336,75 @@ class AssetManager
     public function replaceTokens(string $HTML)
     {
         $scripts = $this->resolveAssets($this->scripts, "js");
-        $css = $this->resolveAssets($this->css, "css");
+        $CSS = $this->resolveAssets($this->CSS, "css");
 
-        $tpl = new Template($this->resolver);
-        $tpl->setTemplate('parts/scripts');
-        $tpl->assign('scripts', $scripts);
-        $tpl->assign('inline_js', $this->inline_variables);
-        $script_HTML = $tpl->renderReturn()->getOutput($mime);
-        $HTML = str_replace('#WEDETO-JAVASCRIPT#', $script_HTML, $HTML);
+        // Initialize all output variables to null
+        $values = new TypedDictionary(
+            [
+                'css_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
+                'js_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
+                'js_inline_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
+                'css_files' => Type::ARRAY,
+                'js_files' => Type::ARRAY,
+                'js_inline_variables' => Type::ARRAY
+            ],
+            [
+                'js_files' => $scripts,
+                'css_files' => $CSS,
+                'js_inline_variables' => $this->inline_variables
+            ]
+        );
 
-        $tpl = new Template($this->resolver);
-        $tpl->setTemplate('parts/stylesheets');
-        $tpl->assign('stylesheets', $css);
-        $tpl->assign('inline_css', $this->inline_style);
-        $css_HTML = $tpl->renderReturn()->getOutput($mime);
-        $HTML = str_replace('#WEDETO-CSS#', $css_HTML, $HTML);
+        // Allow hooks to modify the scripts and CSS before modifying them
+        Hook::execute('Wedeto.HTML.AssetManager.replaceTokens.preRender', $values);
+
+        // Do rendering
+        if (!empty($values['js_files']) && empty($values['js_document']))
+        {
+            $js_doc = new DOMDocument;
+            foreach ($values['js_files'] as $script)
+            {
+                $element = $js_doc->createElement('script');
+                $element->setAttribute('src', $script['url']);
+                $js_doc->appendChild($element);
+            }
+            $values['js_document'] = $js_doc;
+        }
+        
+        if (!empty($values['js_inline_variables']) && empty($values['js_inline_document']))
+        {
+            $js_inline_doc = new DOMDocument;
+            $code_lines = ['window.wdt = {};'];
+            foreach ($values['js_inline_variables'] as $name => $value)
+                $code_lines[] = "window.wdt.$name = " . json_encode($value) . ";";
+            $variable_el = $js_inline_doc->createElement('script', implode("\n", $code_lines));
+            $js_inline_doc->appendChild($variable_el);
+            $values['js_inline_document'] = $js_inline_doc;
+        }
+
+        if (!empty($values['css_files']) && empty($values['css_document']))
+        {
+            $CSS_doc = new DOMDocument;
+            foreach ($CSS as $stylesheet)
+            {
+                $element = $CSS_doc->createElement('link');
+                $element->setAttribute('rel', 'stylesheet');
+                $element->setAttribute('href', $stylesheet['url']);
+                $element->setAttribute('type', 'text/css');
+                $CSS_doc->appendChild($element);
+            }
+            $values['css_document'] = $CSS_doc;
+        }
+
+        // Allow hooks to modify the output
+        Hook::execute('Wedeto.HTML.AssetManager.replaceTokens.postRender', $values);
+
+        $script_HTML = $values->has('js_document') ? trim($values['js_document']->saveHTML()) : '';
+        $CSS_HTML = $values->has('css_document') ? trim($values['css_document']->saveHTML()) : '';
+        $inline_script_HTML = $values->has('js_inline_document') ? trim($values['js_inline_document']->saveHTML()) : '';
+
+        $HTML = str_replace('#WEDETO-JAVASCRIPT#', $script_HTML . $inline_script_HTML, $HTML);
+        $HTML = str_replace('#WEDETO-CSS#', $CSS_HTML, $HTML);
 
         // Tidy up HTML when configured and available
         if ($this->tidy)

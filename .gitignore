@@ -3,3 +3,4 @@ var/*
 .*.swp
 composer.lock
 vendor/
+cc/

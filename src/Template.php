@@ -97,11 +97,13 @@ namespace Wedeto\HTML
             $this->setResolver($resolver);
             $this->setAssetManager($asset_manager);
 
-            self::$instance = $this;
+            if (self::$instance === null)
+                self::$instance = $this;
         }
 
         /**
-         * @return Template The most recently constructed template instance
+         * @return Template The default template instance. The first Template constructed
+         * will automatically be assigned to this, but can be overridden using Template#setInstance.
          */
         public static function getInstance()
         {
@@ -249,7 +251,7 @@ namespace Wedeto\HTML
          * Set the URL Prefix
          * @param string $prefix The string to be prepended before
          *                       all relative URLs resolved by
-        l*                       Template#URL
+         *                       Template#URL
          */
         public function setURLPrefix(string $prefix)
         {
@@ -505,6 +507,6 @@ namespace
 
     function URL($path)
     {
-        return Template::getInstance()->URL($path);
+        return Wedeto\HTML\Template::getInstance()->URL($path);
     }
 }

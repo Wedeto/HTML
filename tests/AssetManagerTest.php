@@ -46,6 +46,7 @@ final class AssetManagerTest extends TestCase
         $this->devlogger = new \Wedeto\Log\Writer\MemLogWriter(LogLevel::DEBUG);
         $logger = \Wedeto\Log\Logger::getLogger(AssetManager::class);
         $logger->addLogWriter($this->devlogger);
+        AssetManager::setLogger($logger);
         $this->resolver = new MockAssetResolver;
     }
 
@@ -160,9 +161,19 @@ final class AssetManagerTest extends TestCase
         );
     }
 
+    public function testGetAndSetResolver()
+    {
+        $mgr = new AssetManager($this->resolver);
+        $this->assertSame($this->resolver, $mgr->getResolver());
+
+        $res = new Resolver('foo');
+        $this->assertSame($mgr, $mgr->setResolver($res));
+        $this->assertSame($res, $mgr->getResolver());
+    }
+
     public function testInlineJSArrayValue()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $val = array('my' => 'json', 'var' => 3);
         $mgr->addVariable('test', $val);
@@ -172,7 +183,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJSScalarValue()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $expected = 3.5;
         $mgr->addVariable('test', 3.5);
@@ -182,7 +193,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJSDictionary()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $dict = new Dictionary(array('a' => 3));
         $mgr->addVariable('test', $dict);
@@ -193,7 +204,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsArrayLike()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $dict = new Dictionary(array('a' => 3));
         $mgr->addVariable('test', $dict);
@@ -204,7 +215,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsJsonSerializable()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $obj = new MockAssetMgrJsonSerializable();
 
@@ -216,12 +227,28 @@ final class AssetManagerTest extends TestCase
 
     public function testInlineJsInvalid()
     {
-        $mgr = new AssetManager(new MockAssetResolver);
+        $mgr = new AssetManager($this->resolver);
 
         $obj = new \StdClass();
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Invalid value provided for JS variable test");
         $mgr->addVariable('test', $obj);
+    }
+
+    public function testInlineJSRender()
+    {
+        $mgr = new AssetManager($this->resolver);
+
+        $mgr->addVariable('var_int', 3);
+        $mgr->addVariable('var_float', 3.5);
+        $mgr->addVariable('var_string', 'foo');
+        $mgr->addVariable('var_arr', [1, 3, 5]);
+
+        $op = $mgr->replaceTokens('#WEDETO-JAVASCRIPT#');
+        $this->assertContains('var_int = 3', $op);
+        $this->assertContains('var_float = 3.5', $op);
+        $this->assertContains('var_string = "foo"', $op);
+        $this->assertContains('var_arr = [1,3,5];', $op);
     }
 
     public function testInlineCSS()

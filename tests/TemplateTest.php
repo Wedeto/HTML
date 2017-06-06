@@ -54,6 +54,7 @@ final class TemplateTest extends TestCase
         vfsStreamWrapper::setRoot(new vfsStreamDirectory('tpldir'));
         $this->testpath = vfsStream::url('tpldir');
         $this->filename = $this->testpath . '/' . sha1(random_int(0, 1000)) . ".php";
+        Template::setInstance();
     }
 
     /**
@@ -65,11 +66,29 @@ final class TemplateTest extends TestCase
     public function testConstruct()
     {
         $tpl = new Template($this->resolver);
+        $this->assertSame($tpl, Template::getInstance());
         $tpl->setTemplate('error/HTTPError');
         $tpl->setTitle('IO Error');
         $tpl->assign('exception', new IOException('Fail'));
 
         $this->assertEquals('IO Error', $tpl->title());
+    }
+
+    public function testGetInstanceThrowsExceptionWhenNoneWasSet()
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage("Accessing Template instance before constructing");
+        Template::getInstance();
+    }
+
+    public function testGetResolver()
+    {
+        $tpl = new Template($this->resolver);
+        $this->assertSame($this->resolver, $tpl->getResolver());
+
+        $res = new Resolver('foo');
+        $this->assertSame($tpl, $tpl->setResolver($res), "Fluent interface does not work");
+        $this->assertSame($res, $tpl->getResolver());
     }
 
     public function testTitle()
@@ -127,11 +146,19 @@ final class TemplateTest extends TestCase
 
         $file = $this->resolver->resolve('error/HTTPError500');
         $tpl->setExceptionTemplate(new HTTPError(500, 'Foobarred'));
-        $this->assertEquals($file, $tpl->getTemplate());
+        $this->assertEquals($file, $tpl->getTemplate(), "HTTP Error uses shortcut URL");
 
         $file = $this->resolver->resolve('error/Wedeto/HTML/MockTemplateHTTPError500');
         $tpl->setExceptionTemplate(new MockTemplateHTTPError(500, 'Foobarred'));
-        $this->assertEquals($file, $tpl->getTemplate());
+        $this->assertEquals($file, $tpl->getTemplate(), "Custom exception class uses full name space for resolution");
+
+        $file = $this->resolver->resolve('error/Wedeto/HTML/MockTemplateHTTPError');
+        $tpl->setExceptionTemplate(new MockTemplateHTTPError(0, 'Foobarred'));
+        $this->assertEquals($file, $tpl->getTemplate(), "Empty error code removes error code from path");
+
+        $file = $this->resolver->resolve('error/Wedeto/HTML/MockTemplateHTTPError');
+        $tpl->setExceptionTemplate(new MockTemplateSubHTTPError(0, 'Foobarred'));
+        $this->assertEquals($file, $tpl->getTemplate(), "Non-existing exception template delegates to parent class");
     }
 
     /**
@@ -286,6 +313,19 @@ EOT;
         $this->assertTrue(isset($variables['foo']));
         $this->assertEquals('baz', $variables['foo']);
     }
+
+    /**
+     * @covers \URL
+     */
+    public function testURL()
+    {
+        $tpl = new Template($this->resolver);
+        $this->assertSame($tpl, $tpl->setURLPrefix('/foo/bar/'));
+        $this->assertEquals('/foo/bar/', $tpl->getURLPrefix());
+        $this->assertEquals('/foo/bar/test', $tpl->URL('test'));
+
+        $this->assertEquals('/foo/bar/test', \URL('test'));
+    }
 }
 
 class MockTemplateResolver extends \Wedeto\Resolve\Resolver
@@ -295,9 +335,15 @@ class MockTemplateResolver extends \Wedeto\Resolve\Resolver
 
     public function resolve(string $tpl)
     {
+        if ($tpl === 'error/Wedeto/HTML/MockTemplateSubHTTPError')
+            return null;
+
         return '/foobar/' . $tpl;
     }
 }
 
 class MockTemplateHTTPError extends HTTPError
+{}
+
+class MockTemplateSubHTTPError extends MockTemplateHTTPError
 {}
