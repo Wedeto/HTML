@@ -502,7 +502,7 @@ namespace
 
     function txt($str)
     {
-        return htmlentities($str, ENT_HTML5 | ENT_SUBSTITUTE | ENT_QUOTES);
+        return htmlspecialchars($str, ENT_HTML5 | ENT_SUBSTITUTE | ENT_QUOTES);
     }
 
     function URL($path)
