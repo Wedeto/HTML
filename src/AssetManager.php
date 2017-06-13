@@ -37,7 +37,7 @@ use Wedeto\Util\Hook;
 use Wedeto\Util\Functions as WF;
 
 use Wedeto\HTTP\Response\Response;
-use Wedeto\HTTP\Response\Error;
+use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
 
 use Wedeto\Resolve\Resolver;
@@ -438,6 +438,9 @@ class AssetManager
         $mime = $params['mime'] ?? null;
 
         $response = empty($responder) ? null : $responder->getResponse();
+
+        if ($response instanceof HTTPError)
+            $response = $response->getResponse();
 
         if ($response instanceof StringResponse && $mime === "text/html")
         {
