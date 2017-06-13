@@ -67,13 +67,13 @@ class AssetManager
      *
      * @param Resolver $resolver The Resolver to resolve the referenced assets
      * @param string $resolve_prefix The path to be prepended before resolved
-     *                               assets. /assets/ by default
+     *                               assets. Empty by default
      * @param string $url_prefix The path to be prepended before the resolved
      *                           URL.  /assets/ by default.
      */
     public function __construct(
         Resolver $resolver, 
-        string $resolve_prefix = '/assets/',
+        string $resolve_prefix = '',
         string $url_prefix = '/assets/'
     )
     {
