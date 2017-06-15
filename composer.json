@@ -5,20 +5,23 @@
     "homepage": "https://wedeto.net/",
     "type": "library",
     "require": {
-        "Wedeto/Util": "0.9.*",
-        "Wedeto/IO": "0.9.*",
-        "Wedeto/Resolve": "0.9.*",
-        "Wedeto/HTTP": "0.9.*",
+        "Wedeto/Util": ">=0.9.0",
+        "Wedeto/IO": ">=0.9.0",
+        "Wedeto/Resolve": ">=0.9.0",
+        "Wedeto/HTTP": ">=0.9.0",
         "php": ">=7.0.0"
     },
     "require-dev": {
         "mikey179/vfsStream": "~1",
-        "Wedeto/Log": "0.9.*"
+        "Wedeto/Log": ">=0.9.0"
     },
     "autoload": {
         "psr-4": {
             "Wedeto\\HTML\\": "src/"
         }
+    },
+    "archive": {
+        "exclude": ["/tests","/phpunit.xml"]
     },
     "authors": [
         {
