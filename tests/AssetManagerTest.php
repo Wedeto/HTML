@@ -32,6 +32,7 @@ use Wedeto\Resolve\Resolver;
 
 use Wedeto\HTTP\Request;
 use Wedeto\HTTP\Responder;
+use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
 
 /**
@@ -342,20 +343,71 @@ final class AssetManagerTest extends TestCase
         $expected = <<<EOT
 <!DOCTYPE html>
 <html>
-  </head>
-    <title></title>
-  </head>
-  <body>
-    <h1>
-      Foo
-    </h1>
-  </body>
+    </head>
+        <title></title>
+    </head>
+    <body>
+        <h1>
+            Foo
+        </h1>
+    </body>
 </html>
 EOT;
 
         $op = $response->getOutput('text/html');
 
         $this->assertEquals($expected, $op);
+    }
+
+    public function testExcecuteHookWithError()
+    {
+        $mgr = new AssetManager(new MockAssetResolver);
+        $req = Request::createFromGlobals();
+
+        $mgr->addScript('test1');
+
+        $response = new HTTPError(404, 'Resource not found');
+        $sub = new StringResponse("<html><head>" . $mgr->injectScript() . "</head><body><h1>Not Found</h1></body></html>", 'text/html');
+        $response->setResponse($sub);
+
+        $responder = new Responder($req);
+        $responder->setResponse($response);
+
+        $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
+        $mgr->executeHook($params);
+
+        $expected = <<<EOT
+<html><head><script src="/assets/js/test1.min.js"></script></head><body><h1>Not Found</h1></body></html>
+EOT;
+
+        $op = $sub->getOutput('text/html');
+
+        $this->assertEquals($expected, $op);
+    }
+
+    public function testResolveAssetsWithVendorPrefix()
+    {
+        $mgr = new AssetManager(new MockAssetResolver);
+        $cache = new Dictionary;
+        $mgr->setCache($cache);
+
+        $urls = [
+            ['path' => 'test1'],
+            ['path' => 'vendor/test/js/test4']
+        ];
+
+        $result = $mgr->resolveAssets($urls, 'js');
+        $expected = [
+            ['path' => 'js/test1.min.js', 'url' => '/assets/js/test1.min.js', 'mtime' => null],
+            ['path' => 'vendor/test/js/test4.min.js', 'url' => '/assets/vendor/test/js/test4.min.js', 'mtime' => null],
+        ];
+        $this->assertEquals($expected, $result);
+
+        $vars = $cache->getSection('asset-mtime')->getAll();
+        $this->assertTrue(array_key_exists('js/test1.min.js', $vars));
+        $this->assertNull($vars['js/test1.min.js']);
+        $this->assertTrue(array_key_exists('vendor/test/js/test4.min.js', $vars));
+        $this->assertNull($vars['vendor/test/js/test4.min.js']);
     }
 }
 
@@ -378,6 +430,9 @@ class MockAssetResolver extends Resolver
         // test3 is available minified and unminified
         if (strpos($path, 'test3') !== false)
             return 'resolved/' . $path;
+
+        if (substr($path, 0, 7) === 'vendor/')
+            return 'vendorstorage/' . $path;
 
         return null;
     }

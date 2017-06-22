@@ -62,6 +62,8 @@ class AssetManager
     protected $resolve_prefix;
     protected $url_prefix;
 
+    protected $cache;
+
     /**
      * Create the asset manager.
      *
@@ -278,6 +280,18 @@ class AssetManager
     }
 
     /**
+     * Set the cache to be used for stat cache: stores the last modified date
+     * of all resolved assets
+     *
+     * @param Dictionary The cache to use. Should probably be a Wedeto\Util\Cache instance
+     */
+    public function setCache(Dictionary $cache)
+    {
+        $this->cache = $cache;
+        return $this;
+    }
+
+    /**
      * Resolve a list of assets. The assets will be resolved by the Resolver.
      * Depending on the setting of minified, the minified or the unminified version
      * will be preferred. When the preferred type is not available, another one
@@ -287,11 +301,21 @@ class AssetManager
      */
     public function resolveAssets(array $list, $type)
     {
+        if ($this->cache === null)
+            $this->cache = new Dictionary;
+
         $urls = array();
         foreach ($list as $asset)
         {
-            $relpath = $this->resolve_prefix . $type . "/" . $asset['path'];
-            $url = $this->url_prefix . $type . "/" . $asset['path'];
+            $path = ltrim($asset['path'], '/');
+
+            // If the prefix is vendor, a vendor subfolder structure is assumed.
+            // In this case, the path is not modified: no css or js prefix will be inserted.
+            $prefix = substr($path, 0, 7) === 'vendor/' ? '' : $type . '/';
+
+            $relpath = $this->resolve_prefix . $prefix . $asset['path'];
+            $url = $this->url_prefix . $prefix . $asset['path'];
+
             $unminified_path = $relpath . "." . $type;
             $unminified_url = $url . "." . $type;
             $minified_path = $relpath . ".min." . $type;
@@ -321,6 +345,14 @@ class AssetManager
                 continue;
             }
 
+            if (!$this->cache->has('asset-mtime', $asset['path']))
+            {
+                $mtime = file_exists($asset['path']) ? filemtime($asset['path']) : null;
+                $this->cache->set('asset-mtime', $asset['path'], $mtime);
+            }
+
+            $asset['mtime'] = $this->cache->get('asset-mtime', $asset['path']);
+            $asset['url'] .= !empty($asset['mtime']) ? '?' . $asset['mtime'] : '';
             $urls[] = $asset;
         }
 
@@ -375,8 +407,6 @@ class AssetManager
         $jsv = $values->getArray('js_inline_variables');
         if (!empty($jsv) && !$values->has('js_inline_document'))
         {
-            var_dump($jsv);
-            die();
             $js_inline_doc = new DOMDocument;
             $code_lines = ['window.wdt = {};'];
             foreach ($jsv as $name => $value)
