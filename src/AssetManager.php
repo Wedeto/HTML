@@ -328,16 +328,19 @@ class AssetManager
             {
                 $asset['path'] = $unminified_path;
                 $asset['url'] = $unminified_url;
+                $resolved_asset = $unminified_file;
             }
             elseif ($minified_file)
             {
                 $asset['path'] = $minified_path;
                 $asset['url'] = $minified_url;
+                $resolved_asset = $minified_file;
             }
             elseif ($unminified_file)
             {
                 $asset['path'] = $unminified_path;
                 $asset['url'] = $unminified_url;
+                $resolved_asset = $unminified_file;
             }
             else
             {
@@ -347,7 +350,7 @@ class AssetManager
 
             if (!$this->cache->has('asset-mtime', $asset['path']))
             {
-                $mtime = file_exists($asset['path']) ? filemtime($asset['path']) : null;
+                $mtime = file_exists($resolved_asset) ? filemtime($resolved_asset) : null;
                 $this->cache->set('asset-mtime', $asset['path'], $mtime);
             }
 
