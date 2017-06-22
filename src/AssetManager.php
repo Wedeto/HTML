@@ -359,10 +359,11 @@ class AssetManager
         Hook::execute('Wedeto.HTML.AssetManager.replaceTokens.preRender', $values);
 
         // Do rendering
-        if (!empty($values['js_files']) && empty($values['js_document']))
+        $js = $values->getArray('js_files');
+        if (!empty($js) && !$values->has('js_document'))
         {
             $js_doc = new DOMDocument;
-            foreach ($values['js_files'] as $script)
+            foreach ($js as $script)
             {
                 $element = $js_doc->createElement('script');
                 $element->setAttribute('src', $script['url']);
@@ -371,18 +372,22 @@ class AssetManager
             $values['js_document'] = $js_doc;
         }
         
-        if (!empty($values['js_inline_variables']) && empty($values['js_inline_document']))
+        $jsv = $values->getArray('js_inline_variables');
+        if (!empty($jsv) && !$values->has('js_inline_document'))
         {
+            var_dump($jsv);
+            die();
             $js_inline_doc = new DOMDocument;
             $code_lines = ['window.wdt = {};'];
-            foreach ($values['js_inline_variables'] as $name => $value)
+            foreach ($jsv as $name => $value)
                 $code_lines[] = "window.wdt.$name = " . json_encode($value) . ";";
             $variable_el = $js_inline_doc->createElement('script', implode("\n", $code_lines));
             $js_inline_doc->appendChild($variable_el);
             $values['js_inline_document'] = $js_inline_doc;
         }
 
-        if (!empty($values['css_files']) && empty($values['css_document']))
+        $CSS = $values->getArray('css_files');
+        if (!empty($CSS) && !$values->has('css_document'))
         {
             $CSS_doc = new DOMDocument;
             foreach ($CSS as $stylesheet)
@@ -412,7 +417,7 @@ class AssetManager
             if (class_exists("Tidy", false))
             {
                 $tidy = new \Tidy();
-                $config = array('indent' => true, 'wrap' => 120, 'markup' => true, 'doctype' => 'omit');
+                $config = array('indent' => true, 'indent-spaces' => 4, 'indent-attributes' => true, 'wrap' => 120, 'markup' => true, 'doctype' => 'omit');
                 $HTML = "<!DOCTYPE html>\n" . $tidy->repairString($HTML, $config, "utf8");
             }
             else
