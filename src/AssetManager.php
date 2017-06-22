@@ -450,7 +450,7 @@ class AssetManager
             if (class_exists("Tidy", false))
             {
                 $tidy = new \Tidy();
-                $config = array('indent' => true, 'indent-spaces' => 4, 'indent-attributes' => true, 'wrap' => 120, 'markup' => true, 'doctype' => 'omit');
+                $config = array('indent' => true, 'indent-spaces' => 4, 'wrap' => 120, 'markup' => true, 'doctype' => 'omit');
                 $HTML = "<!DOCTYPE html>\n" . $tidy->repairString($HTML, $config, "utf8");
             }
             else
