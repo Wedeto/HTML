@@ -254,6 +254,21 @@ EOT;
         $expected = 'some &lt;html special&amp; &quot;characters'; 
 
         $this->assertEquals($expected, $actual);
+
+
+        $actual = \txt(function () {
+            ?>
+            THIS IS MY HTML OUTPUT <>
+            <?php
+        });
+
+        $expected = 'THIS IS MY HTML OUTPUT &lt;&gt;';
+
+        $this->assertEquals($expected, trim($actual));
+
+        $actual = \txt(['foo' => 'bar']);
+        $expected = '[&apos;foo&apos; =&gt; bar]';
+        $this->assertEquals($expected, trim($actual));
     }
 
     /**

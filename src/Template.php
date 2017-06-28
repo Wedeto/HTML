@@ -502,6 +502,17 @@ namespace
 
     function txt($str)
     {
+        if (is_object($str) && is_callable($str))
+        {
+            ob_start();
+            $str();
+            $str = ob_get_contents();
+            ob_end_clean();
+        }
+
+        if (!is_string($str))
+            $str = Wedeto\Util\Functions::str($str);
+
         return htmlspecialchars($str, ENT_HTML5 | ENT_SUBSTITUTE | ENT_QUOTES);
     }
 
