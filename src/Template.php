@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Wedeto\HTML
 {
     use Throwable;
+    use RuntimeException;
 
     use Wedeto\Resolve\Resolver;
     use Wedeto\Util\LoggerAwareStaticTrait;
@@ -465,7 +466,7 @@ namespace Wedeto\HTML
                 $class = get_parent_class($class);
             }
 
-            if (!$resolved) throw new \RuntimeException("Could not find any matching template for " . get_class($exception));
+            if (!$resolved) throw new RuntimeException("Could not find any matching template for " . get_class($exception));
             
             $this->template_path = $resolved;
             return $this;

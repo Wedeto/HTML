@@ -27,6 +27,7 @@ namespace Wedeto\HTML;
 
 use JSONSerializable;
 use InvalidArgumentException;
+use RuntimeException;
 use DOMDocument;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
@@ -441,8 +442,21 @@ class AssetManager
         $CSS_HTML = $values->has('css_document') ? trim($values['css_document']->saveHTML()) : '';
         $inline_script_HTML = $values->has('js_inline_document') ? trim($values['js_inline_document']->saveHTML()) : '';
 
-        $HTML = str_replace('#WEDETO-JAVASCRIPT#', $script_HTML . $inline_script_HTML, $HTML);
-        $HTML = str_replace('#WEDETO-CSS#', $CSS_HTML, $HTML);
+        $count = 0;
+        $HTML = str_replace($this->injectScript(), $script_HTML . $inline_script_HTML, $HTML, $count);
+        if ($count === 0 && !empty($script_HTML))
+        {
+            self::$logger->warning("No Javascript marker found while there are scripts to insert");
+            self::$logger->debug("To-be inserted scripts: {0}", $js);
+        }
+
+        $count = 0;
+        $HTML = str_replace($this->injectCSS(), $CSS_HTML, $HTML, $count);
+        if ($count === 0 && !empty($CSS_HTML))
+        {
+            self::$logger->warning("No CSS marker found while there are stylesheets to insert");
+            self::$logger->debug("To-be inserted stylesheets: {0}", [$CSS]);
+        }
 
         // Tidy up HTML when configured and available
         if ($this->tidy)
