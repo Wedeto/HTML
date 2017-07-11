@@ -350,9 +350,9 @@ namespace Wedeto\HTML
          * @param string $script The script to add
          * @return Wedeto\Template Provides fluent interface
          */
-        public function addJS(string $script)
+        public function addJS(string $script, string $depends = null)
         {
-            $this->asset_manager->addScript($script);
+            $this->asset_manager->addScript($script, $depends);
             return $this;
         }
 

@@ -363,15 +363,17 @@ class AssetManager
 
         // Solve dependency tree for assets
         $urls_sorted = [];
+        $inserted = [];
         while (!empty($urls))
         {
             $handled = 0;
             foreach ($urls as $idx => $asset)
             {
-                if (empty($asset['depends']) || isset($inserted[$asset['basename']]))
+                $base = $asset['basename'];
+                if (empty($asset['depends']) || isset($inserted[$asset['depends']]))
                 {
                     $urls_sorted[] = $asset;
-                    $inserted[$asset['basename']] = true;
+                    $inserted[$base] = true;
                     unset($urls[$idx]);
                     ++$handled;
                 }
