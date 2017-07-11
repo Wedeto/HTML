@@ -151,10 +151,10 @@ class AssetManager
      * @param string $script The script to be loaded
      * @return AssetManager Provides fluent interface
      **/
-    public function addScript(string $script)
+    public function addScript(string $script, $depends = null)
     {
         $script = $this->stripSuffix($script, ".min", ".js");
-        $this->scripts[$script] = array("path" => $script);
+        $this->scripts[$script] = array("path" => $script, "depends" => $depends);
         return $this;
     }
 
@@ -309,6 +309,7 @@ class AssetManager
         foreach ($list as $asset)
         {
             $path = ltrim($asset['path'], '/');
+            $asset['basename'] = basename($path);
 
             // If the prefix is vendor, a vendor subfolder structure is assumed.
             // In this case, the path is not modified: no css or js prefix will be inserted.
@@ -360,7 +361,33 @@ class AssetManager
             $urls[] = $asset;
         }
 
-        return $urls;
+        // Solve dependency tree for assets
+        $urls_sorted = [];
+        while (!empty($urls))
+        {
+            $handled = 0;
+            foreach ($urls as $idx => $asset)
+            {
+                if (empty($asset['depends']) || isset($inserted[$asset['basename']]))
+                {
+                    $urls_sorted[] = $asset;
+                    $inserted[$asset['basename']] = true;
+                    unset($urls[$idx]);
+                    ++$handled;
+                }
+            }
+
+            if ($handled === 0)
+            {
+                self::$logger->error("Could not solve dependency tree for assets");
+                foreach ($urls as $asset)
+                    $urls_sorted[] = $asset;
+                break;
+            }
+        }
+        self::$logger->debug("Dependency-sorted list of assets: {0}", [$urls_sorted]);
+
+        return $urls_sorted;
     }
 
     /**
