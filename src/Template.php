@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Wedeto\HTML
 {
     use Throwable;
+    use RuntimeException;
 
     use Wedeto\Resolve\SubResolver;
     use Wedeto\Util\LoggerAwareStaticTrait;
@@ -349,9 +350,9 @@ namespace Wedeto\HTML
          * @param string $script The script to add
          * @return Wedeto\Template Provides fluent interface
          */
-        public function addJS(string $script)
+        public function addJS(string $script, string $depends = null)
         {
-            $this->asset_manager->addScript($script);
+            $this->asset_manager->addScript($script, $depends);
             return $this;
         }
 
@@ -465,7 +466,7 @@ namespace Wedeto\HTML
                 $class = get_parent_class($class);
             }
 
-            if (!$resolved) throw new \RuntimeException("Could not find any matching template for " . get_class($exception));
+            if (!$resolved) throw new RuntimeException("Could not find any matching template for " . get_class($exception));
             
             $this->template_path = $resolved;
             return $this;

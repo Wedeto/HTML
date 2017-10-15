@@ -27,6 +27,7 @@ namespace Wedeto\HTML;
 
 use JSONSerializable;
 use InvalidArgumentException;
+use RuntimeException;
 use DOMDocument;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
@@ -150,10 +151,10 @@ class AssetManager
      * @param string $script The script to be loaded
      * @return AssetManager Provides fluent interface
      **/
-    public function addScript(string $script)
+    public function addScript(string $script, $depends = null)
     {
         $script = $this->stripSuffix($script, ".min", ".js");
-        $this->scripts[$script] = array("path" => $script);
+        $this->scripts[$script] = array("path" => $script, "depends" => $depends);
         return $this;
     }
 
@@ -308,6 +309,7 @@ class AssetManager
         foreach ($list as $asset)
         {
             $path = ltrim($asset['path'], '/');
+            $asset['basename'] = basename($path);
 
             // If the prefix is vendor, a vendor subfolder structure is assumed.
             // In this case, the path is not modified: no css or js prefix will be inserted.
@@ -359,7 +361,35 @@ class AssetManager
             $urls[] = $asset;
         }
 
-        return $urls;
+        // Solve dependency tree for assets
+        $urls_sorted = [];
+        $inserted = [];
+        while (!empty($urls))
+        {
+            $handled = 0;
+            foreach ($urls as $idx => $asset)
+            {
+                $base = $asset['basename'];
+                if (empty($asset['depends']) || isset($inserted[$asset['depends']]))
+                {
+                    $urls_sorted[] = $asset;
+                    $inserted[$base] = true;
+                    unset($urls[$idx]);
+                    ++$handled;
+                }
+            }
+
+            if ($handled === 0)
+            {
+                self::$logger->error("Could not solve dependency tree for assets");
+                foreach ($urls as $asset)
+                    $urls_sorted[] = $asset;
+                break;
+            }
+        }
+        self::$logger->debug("Dependency-sorted list of assets: {0}", [$urls_sorted]);
+
+        return $urls_sorted;
     }
 
     /**
@@ -441,8 +471,21 @@ class AssetManager
         $CSS_HTML = $values->has('css_document') ? trim($values['css_document']->saveHTML()) : '';
         $inline_script_HTML = $values->has('js_inline_document') ? trim($values['js_inline_document']->saveHTML()) : '';
 
-        $HTML = str_replace('#WEDETO-JAVASCRIPT#', $script_HTML . $inline_script_HTML, $HTML);
-        $HTML = str_replace('#WEDETO-CSS#', $CSS_HTML, $HTML);
+        $count = 0;
+        $HTML = str_replace($this->injectScript(), $script_HTML . $inline_script_HTML, $HTML, $count);
+        if ($count === 0 && !empty($script_HTML))
+        {
+            self::$logger->warning("No Javascript marker found while there are scripts to insert");
+            self::$logger->debug("To-be inserted scripts: {0}", $js);
+        }
+
+        $count = 0;
+        $HTML = str_replace($this->injectCSS(), $CSS_HTML, $HTML, $count);
+        if ($count === 0 && !empty($CSS_HTML))
+        {
+            self::$logger->warning("No CSS marker found while there are stylesheets to insert");
+            self::$logger->debug("To-be inserted stylesheets: {0}", [$CSS]);
+        }
 
         // Tidy up HTML when configured and available
         if ($this->tidy)
