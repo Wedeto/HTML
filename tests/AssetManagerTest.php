@@ -398,8 +398,8 @@ EOT;
 
         $result = $mgr->resolveAssets($urls, 'js');
         $expected = [
-            ['path' => 'js/test1.min.js', 'url' => '/assets/js/test1.min.js', 'mtime' => null],
-            ['path' => 'vendor/test/js/test4.min.js', 'url' => '/assets/vendor/test/js/test4.min.js', 'mtime' => null],
+            ['path' => 'js/test1.min.js', 'url' => '/assets/js/test1.min.js', 'mtime' => null, 'basename' => 'test1'],
+            ['path' => 'vendor/test/js/test4.min.js', 'url' => '/assets/vendor/test/js/test4.min.js', 'mtime' => null, 'basename' => 'test4'],
         ];
         $this->assertEquals($expected, $result);
 
