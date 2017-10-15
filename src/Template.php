@@ -27,7 +27,7 @@ namespace Wedeto\HTML
 {
     use Throwable;
 
-    use Wedeto\Resolve\Resolver;
+    use Wedeto\Resolve\SubResolver;
     use Wedeto\Util\LoggerAwareStaticTrait;
     use Wedeto\Util\Hook;
     use Wedeto\HTTP\Response\Error as HTTPError;
@@ -86,9 +86,9 @@ namespace Wedeto\HTML
          * in the Wedeto system, which you can obtain using System::template().
          * Templates rendered this way template will share all assigned
          * variables.
-         * @param Wedeto\Resolve\Resolver $resolver The template and asset resolver
+         * @param Wedeto\Resolve\SubResolver $resolver The template and asset resolver
          */
-        public function __construct(Resolver $resolver, AssetManager $asset_manager = null)
+        public function __construct(SubResolver $resolver, AssetManager $asset_manager = null)
         {
             if ($asset_manager === null)
                 $asset_manager = new AssetManager($resolver);
@@ -171,17 +171,17 @@ namespace Wedeto\HTML
 
         /**
          * Set the resolver instance used to resolve templates and assets
-         * @param Wedeto\Resolve\Resolver The resolver instance
+         * @param Wedeto\Resolve\SubResolver The resolver instance
          * @return Wedeto\Application\Template Provides fluent interface
          */
-        public function setResolver(Resolver $resolver)
+        public function setResolver(SubResolver $resolver)
         {
             $this->resolver = $resolver;
             return $this;
         }
 
         /**
-         * @return Wedeto\Resolve\Resolver The resolver instance
+         * @return Wedeto\Resolve\SubResolver The resolver instance
          */
         public function getResolver()
         {

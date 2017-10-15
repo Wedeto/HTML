@@ -40,7 +40,7 @@ use Wedeto\HTTP\Response\Response;
 use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
 
-use Wedeto\Resolve\Resolver;
+use Wedeto\Resolve\SubResolver;
 
 /**
  * AssetManager collects, resolves and injects scripts and style sheets in a
@@ -67,14 +67,14 @@ class AssetManager
     /**
      * Create the asset manager.
      *
-     * @param Resolver $resolver The Resolver to resolve the referenced assets
+     * @param SubResolver $resolver The Resolver to resolve the referenced assets
      * @param string $resolve_prefix The path to be prepended before resolved
      *                               assets. Empty by default
      * @param string $url_prefix The path to be prepended before the resolved
      *                           URL.  /assets/ by default.
      */
     public function __construct(
-        Resolver $resolver, 
+        SubResolver $resolver, 
         string $resolve_prefix = '',
         string $url_prefix = '/assets/'
     )
@@ -86,7 +86,7 @@ class AssetManager
     }
 
     /**
-     * @return Resolver the resolver used to resolve assets in the file system
+     * @return SubResolver the resolver used to resolve assets in the file system
      */
     public function getResolver()
     {
@@ -94,11 +94,11 @@ class AssetManager
     }
 
     /**
-     * Set the Resolver to be used to resolve referenced assets
-     * @param Resolver $resolver The resolver instance
+     * Set the SubResolver to be used to resolve referenced assets
+     * @param SubResolver $resolver The resolver instance
      * @return AssetManager Provides fluent interface
      */
-    public function setResolver(Resolver $resolver)
+    public function setResolver(SubResolver $resolver)
     {
         $this->resolver = $resolver;
         return $this;

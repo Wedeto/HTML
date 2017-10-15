@@ -35,7 +35,7 @@ use Wedeto\IO\IOException;
 use Wedeto\HTTP\Request;
 use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
-use Wedeto\Resolve\Resolver;
+use Wedeto\Resolve\SubResolver;
 
 /**
  * @covers Wedeto\HTML\Template
@@ -86,7 +86,7 @@ final class TemplateTest extends TestCase
         $tpl = new Template($this->resolver);
         $this->assertSame($this->resolver, $tpl->getResolver());
 
-        $res = new Resolver('foo');
+        $res = new SubResolver('foo');
         $this->assertSame($tpl, $tpl->setResolver($res), "Fluent interface does not work");
         $this->assertSame($res, $tpl->getResolver());
     }
@@ -103,7 +103,7 @@ final class TemplateTest extends TestCase
         $filename = basename($this->filename);
         file_put_contents($this->filename, "<?php\necho 'foo bar';\n");
 
-        $this->resolver = new Resolver("template");
+        $this->resolver = new SubResolver("template");
         $this->resolver->addToSearchPath("template", $this->testpath, 0);
 
         $file = $this->resolver->resolve($filename);
@@ -343,7 +343,7 @@ EOT;
     }
 }
 
-class MockTemplateResolver extends \Wedeto\Resolve\Resolver
+class MockTemplateResolver extends SubResolver
 {
     public function __construct()
     {}

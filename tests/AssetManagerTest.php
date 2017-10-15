@@ -28,7 +28,7 @@ namespace Wedeto\HTML;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LogLevel;
 use Wedeto\Util\Dictionary;
-use Wedeto\Resolve\Resolver;
+use Wedeto\Resolve\SubResolver;
 
 use Wedeto\HTTP\Request;
 use Wedeto\HTTP\Responder;
@@ -167,7 +167,7 @@ final class AssetManagerTest extends TestCase
         $mgr = new AssetManager($this->resolver);
         $this->assertSame($this->resolver, $mgr->getResolver());
 
-        $res = new Resolver('foo');
+        $res = new SubResolver('foo');
         $this->assertSame($mgr, $mgr->setResolver($res));
         $this->assertSame($res, $mgr->getResolver());
     }
@@ -267,7 +267,7 @@ final class AssetManagerTest extends TestCase
 
     public function testInvalidJS()
     {
-        $mgr = new AssetManager(new Resolver('assets'));
+        $mgr = new AssetManager(new SubResolver('assets'));
         $mgr->addScript('test4');
 
         $scripts = $mgr->getScripts();
@@ -411,7 +411,7 @@ EOT;
     }
 }
 
-class MockAssetResolver extends Resolver
+class MockAssetResolver extends SubResolver
 {
     public function __construct()
     {}
