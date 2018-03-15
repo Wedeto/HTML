@@ -32,7 +32,8 @@ use DOMDocument;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
 use Wedeto\Util\Dictionary;
-use Wedeto\Util\Type;
+use Wedeto\Util\Validation\Type;
+use Wedeto\Util\Validation\Validator;
 use Wedeto\Util\TypedDictionary;
 use Wedeto\Util\Hook;
 use Wedeto\Util\Functions as WF;
@@ -406,9 +407,9 @@ class AssetManager
         // Initialize all output variables to null
         $values = new TypedDictionary(
             [
-                'css_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
-                'js_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
-                'js_inline_document' => new Type(Type::OBJECT, ['class' => DOMDocument::class]),
+                'css_document' => new Validator(Type::OBJECT, ['class' => DOMDocument::class]),
+                'js_document' => new Validator(Type::OBJECT, ['class' => DOMDocument::class]),
+                'js_inline_document' => new Validator(Type::OBJECT, ['class' => DOMDocument::class]),
                 'css_files' => Type::ARRAY,
                 'js_files' => Type::ARRAY,
                 'js_inline_variables' => Type::ARRAY

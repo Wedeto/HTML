@@ -27,7 +27,7 @@ namespace Wedeto\HTML;
 
 use Wedeto\Util\LoggerAwareStaticTrait;
 use Wedeto\Util\Dictionary;
-use Wedeto\Util\Type;
+use Wedeto\Util\Validation\Type;
 use Wedeto\Util\ErrorInterceptor;
 
 /**
