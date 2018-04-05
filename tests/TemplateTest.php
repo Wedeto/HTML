@@ -31,10 +31,12 @@ use org\bovigo\vfs\vfsStreamWrapper;
 use org\bovigo\vfs\vfsStreamDirectory;
 
 use Wedeto\Util\Dictionary;
+use Wedeto\Util\DI\DI;
 use Wedeto\IO\IOException;
 use Wedeto\HTTP\Request;
 use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
+use Wedeto\Resolve\Resolver;
 use Wedeto\Resolve\SubResolver;
 
 /**
@@ -340,6 +342,24 @@ EOT;
         $this->assertEquals('/foo/bar/test', $tpl->URL('test'));
 
         $this->assertEquals('/foo/bar/test', \URL('test'));
+    }
+
+    public function testDICanCreateTemplate()
+    {
+        DI::startNewContext('TemplateTest');
+
+        $resolverMock = $this->prophesize(Resolver::class);
+
+        $subRes = $this->prophesize(SubResolver::class)->reveal();
+        $resolverMock->getResolver('template')->willReturn($subRes);
+        $resolverMock->getResolver('assets')->willReturn($subRes);
+        $resolver = $resolverMock->reveal();
+
+        DI::getInjector()->setInstance(Resolver::class, $resolver);
+        $tpl = DI::getInjector()->getInstance(Template::class);
+        $this->assertInstanceOf(Template::class, $tpl);
+        DI::destroyContext('TemplateTest');
+        
     }
 }
 

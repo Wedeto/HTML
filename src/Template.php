@@ -28,6 +28,7 @@ namespace Wedeto\HTML
     use Throwable;
     use RuntimeException;
 
+    use Wedeto\Resolve\Resolver;
     use Wedeto\Resolve\SubResolver;
     use Wedeto\Util\LoggerAwareStaticTrait;
     use Wedeto\Util\Hook;
@@ -51,6 +52,8 @@ namespace Wedeto\HTML
      *
      * This will resolve the template all Wedeto modules. HTML escaping can be done by using
      * the txt function, which delegates to htmlentities.
+     *
+     * @generator injectInstance
      */
     class Template
     {
@@ -100,6 +103,15 @@ namespace Wedeto\HTML
 
             if (self::$instance === null)
                 self::$instance = $this;
+        }
+
+        /**
+         * Add a factory method to aid the Injector in instantiating a template
+         */
+        public static function injectInstance(Resolver $resolver, AssetManager $asset_manager)
+        {
+            $sub = $resolver->getResolver('template');
+            return $sub !== null ? new static($sub, $asset_manager) : null;
         }
 
         /**

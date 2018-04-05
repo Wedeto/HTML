@@ -42,11 +42,14 @@ use Wedeto\HTTP\Response\Response;
 use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
 
+use Wedeto\Resolve\Resolver;
 use Wedeto\Resolve\SubResolver;
 
 /**
  * AssetManager collects, resolves and injects scripts and style sheets in a
  * HTML document.
+ *
+ * @generator injectInstance
  */
 class AssetManager
 {
@@ -85,6 +88,15 @@ class AssetManager
         $this->url_prefix = $url_prefix;
         $this->resolve_prefix = $resolve_prefix;
         $this->resolver = $resolver;
+    }
+
+    /**
+     * Generate an instance for the injector
+     */
+    public static function injectInstance(Resolver $resolver)
+    {
+        $sub = $resolver->getResolver('assets');
+        return $sub !== null ? new static($sub) : null;
     }
 
     /**
