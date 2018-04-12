@@ -32,6 +32,7 @@ use org\bovigo\vfs\vfsStreamDirectory;
 
 use Wedeto\Util\Dictionary;
 use Wedeto\Util\DI\DI;
+use Wedeto\Util\DI\DIException;
 use Wedeto\IO\IOException;
 use Wedeto\HTTP\Request;
 use Wedeto\HTTP\Response\Error as HTTPError;
@@ -50,13 +51,18 @@ final class TemplateTest extends TestCase
 
     public function setUp()
     {
+        DI::startNewContext('test');
         $this->resolver = new MockTemplateResolver;
 
         vfsStreamWrapper::register();
         vfsStreamWrapper::setRoot(new vfsStreamDirectory('tpldir'));
         $this->testpath = vfsStream::url('tpldir');
         $this->filename = $this->testpath . '/' . sha1(random_int(0, 1000)) . ".php";
-        Template::setInstance();
+    }
+
+    public function tearDown()
+    {
+        DI::destroyContext('test');
     }
 
     /**
@@ -68,6 +74,7 @@ final class TemplateTest extends TestCase
     public function testConstruct()
     {
         $tpl = new Template($this->resolver);
+        DI::getInjector()->setInstance(Template::class, $tpl);
         $this->assertSame($tpl, Template::getInstance());
         $tpl->setTemplate('error/HTTPError');
         $tpl->setTitle('IO Error');
@@ -78,8 +85,8 @@ final class TemplateTest extends TestCase
 
     public function testGetInstanceThrowsExceptionWhenNoneWasSet()
     {
-        $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage("Accessing Template instance before constructing");
+        $this->expectException(DIException::class);
+        $this->expectExceptionMessage("Could not instantiate class Wedeto\HTML\Template");
         Template::getInstance();
     }
 

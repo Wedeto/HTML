@@ -37,6 +37,9 @@ namespace Wedeto\HTML
     use Wedeto\HTTP\Response\StringResponse;
     use Wedeto\IO\Path;
 
+    use Wedeto\Util\DI\InjectionTrait;
+    use Wedeto\Util\DI\DI;
+
     /**
      * The Templating class implements the Wedeto template system. Templates are
      * regular PHP files, of course without any controller or model activities.
@@ -58,9 +61,9 @@ namespace Wedeto\HTML
     class Template
     {
         use LoggerAwareStaticTrait;
+        use InjectionTrait;
 
-        /** Static instance, allows to access most recently constructed instance */
-        protected static $instance = null;
+        const WDI_REUSABLE = true;
 
         /** The arguments provided for the template */
         protected $arguments = array();
@@ -101,8 +104,10 @@ namespace Wedeto\HTML
             $this->setResolver($resolver);
             $this->setAssetManager($asset_manager);
 
-            if (self::$instance === null)
-                self::$instance = $this;
+            if (!DI::getInjector()->hasInstance(Template::class))
+            {
+                DI::getInjector()->setInstance(Template::class, $this);
+            }
         }
 
         /**
@@ -112,26 +117,6 @@ namespace Wedeto\HTML
         {
             $sub = $resolver->getResolver('template');
             return $sub !== null ? new static($sub, $asset_manager) : null;
-        }
-
-        /**
-         * @return Template The default template instance. The first Template constructed
-         * will automatically be assigned to this, but can be overridden using Template#setInstance.
-         */
-        public static function getInstance()
-        {
-            if (self::$instance === null)
-                throw new \LogicException("Accessing Template instance before constructing it");
-            return self::$instance;
-        }
-
-        /**
-         * Change the default instance
-         * @param Template $tpl The template to use by default
-         */
-        public static function setInstance(Template $tpl = null)
-        {
-            self::$instance = $tpl;
         }
 
         /**
