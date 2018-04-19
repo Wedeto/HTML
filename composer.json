@@ -8,7 +8,7 @@
         "Wedeto/Util": ">=0.9.33",
         "Wedeto/IO": ">=0.9.7",
         "Wedeto/Resolve": ">=0.9.4", 
-        "Wedeto/HTTP": ">=0.9.0",
+        "Wedeto/HTTP": ">=0.9.21",
         "php": ">=7.0.0"
     },
     "require-dev": {

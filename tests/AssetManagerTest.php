@@ -31,6 +31,7 @@ use Wedeto\Util\Dictionary;
 use Wedeto\Resolve\SubResolver;
 
 use Wedeto\HTTP\Request;
+use Wedeto\HTTP\Result;
 use Wedeto\HTTP\Responder;
 use Wedeto\HTTP\Response\Error as HTTPError;
 use Wedeto\HTTP\Response\StringResponse;
@@ -299,7 +300,9 @@ final class AssetManagerTest extends TestCase
         $req = Request::createFromGlobals();
         $responder = new Responder($req);
         $response = new StringResponse("<html><head>" . $mgr->injectCSS() . "</head><body>" . $mgr->injectScript() . "</body></html>", 'text/html');
-        $responder->setResponse($response);
+        $result = new Result;
+        $result->setResponse($response);
+        $responder->setResult($result);
 
         $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
         $mgr->executeHook($params);
@@ -335,7 +338,9 @@ final class AssetManagerTest extends TestCase
         $req = Request::createFromGlobals();
         $responder = new Responder($req);
         $response = new StringResponse("<html></head><body><h1>Foo</html>", 'text/html');
-        $responder->setResponse($response);
+        $result = new Result;
+        $result->setResponse($response);
+        $responder->setResult($result);
 
         $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
         $mgr->executeHook($params);
@@ -367,11 +372,13 @@ EOT;
         $mgr->addScript('test1');
 
         $response = new HTTPError(404, 'Resource not found');
+        $result = new Result;
         $sub = new StringResponse("<html><head>" . $mgr->injectScript() . "</head><body><h1>Not Found</h1></body></html>", 'text/html');
         $response->setResponse($sub);
+        $result->setResponse($response);
 
         $responder = new Responder($req);
-        $responder->setResponse($response);
+        $responder->setResult($result);
 
         $params = new Dictionary(['responder' => $responder, 'mime' => 'text/html']);
         $mgr->executeHook($params);

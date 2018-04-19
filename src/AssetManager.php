@@ -531,7 +531,8 @@ class AssetManager
         $responder = $params['responder'] ?? null;
         $mime = $params['mime'] ?? null;
 
-        $response = empty($responder) ? null : $responder->getResponse();
+        $result = empty($responder) ? null : $responder->getResult();
+        $response = empty($result) ? null : $result->getResponse();
 
         if ($response instanceof HTTPError)
             $response = $response->getResponse();
