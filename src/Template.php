@@ -500,6 +500,11 @@ namespace
 
     function txt($str)
     {
+        if (null == $str)
+        {
+            return "";
+        }
+
         if (is_object($str) && is_callable($str))
         {
             ob_start();
