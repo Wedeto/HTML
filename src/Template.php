@@ -3,7 +3,7 @@
 This is part of Wedeto, the WEb DEvelopment TOolkit.
 It is published under the MIT Open Source License.
 
-Copyright 2017, Egbert van der Wal
+Copyright 2017-2019, Egbert van der Wal
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -444,7 +444,22 @@ namespace Wedeto\HTML
 
             $resolver = $this->resolver;
             $resolved = null;
-            while ($class)
+
+            $classes = array_merge(
+                [$class],
+                class_implements($class),
+                class_parents($class)
+            );
+
+            usort($classes, function ($l, $r) {
+                $lrf = new \ReflectionClass($l);
+                $rrf = new \ReflectionClass($r);
+                $lbi = $lrf->isInternal();
+                $rbi = $rrf->isInternal();
+                return $lbi - $rbi;
+            });
+
+            foreach ($classes as $class)
             {
                 $path = 'error/' . str_replace('\\', '/', $class);
                 if ($class === HTTPError::class)
